@@ -1,8 +1,6 @@
 -- Home Base: initial schema
 -- Run this once in the Supabase dashboard (SQL Editor) on a fresh project.
 
-create extension if not exists pgcrypto;
-
 -- ============================================================================
 -- Households & membership
 -- ============================================================================
@@ -89,6 +87,9 @@ begin
 
   update profiles set household_id = new_household.id where id = auth.uid();
 
+  -- Every household starts with a built-in Groceries list.
+  insert into lists (household_id, name, kind) values (new_household.id, 'Groceries', 'grocery');
+
   return new_household;
 end;
 $$;
@@ -108,7 +109,7 @@ begin
   end if;
 
   insert into household_invites (household_id, code, created_by)
-  values (hh_id, encode(gen_random_bytes(6), 'hex'), auth.uid())
+  values (hh_id, substr(replace(gen_random_uuid()::text, '-', ''), 1, 12), auth.uid())
   returning * into new_invite;
 
   return new_invite;
@@ -335,3 +336,24 @@ create policy "activity_all" on activity for all
 create policy "timers_all" on timers for all
   using (household_id = current_household_id())
   with check (household_id = current_household_id());
+
+-- ============================================================================
+-- Base table grants. RLS only restricts which rows a role can touch; the
+-- role still needs a plain GRANT on the table before RLS policies apply.
+-- ============================================================================
+
+grant usage on schema public to authenticated;
+
+grant select, insert, update, delete on
+  households, profiles, household_invites,
+  projects, tasks, lists, listitems, catalog,
+  dumps, routines, routinelog, activity, timers
+to authenticated;
+
+-- ============================================================================
+-- Realtime: both partners should see each other's changes live.
+-- ============================================================================
+
+alter publication supabase_realtime add table
+  profiles, projects, tasks, lists, listitems, catalog,
+  dumps, routines, routinelog, activity, timers;

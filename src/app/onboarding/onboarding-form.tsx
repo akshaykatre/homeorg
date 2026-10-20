@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function OnboardingForm() {
-  const router = useRouter();
   const supabase = createClient();
 
   const [householdName, setHouseholdName] = useState("Our home");
@@ -56,8 +54,7 @@ export default function OnboardingForm() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    window.location.href = "/";
   }
 
   if (inviteLink) {
@@ -72,8 +69,7 @@ export default function OnboardingForm() {
         </code>
         <button
           onClick={() => {
-            router.push("/");
-            router.refresh();
+            window.location.href = "/";
           }}
           className="rounded-md bg-neutral-900 px-3 py-2 text-white"
         >
