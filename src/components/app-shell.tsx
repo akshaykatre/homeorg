@@ -70,10 +70,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="wrap">
       <header className="top">
-        <div>
+        <Link href="/home" className="brand">
           <h1>Home Base</h1>
           <div className="date">{today}</div>
-        </div>
+        </Link>
         <div className="hdr-r">
           <button
             className="bell"
