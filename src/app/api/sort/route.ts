@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 const MODEL = "claude-sonnet-4-6";
+const MAX_CHARS = 4000;
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60_000;
+
+// In-memory per-user request log. Resets on cold start / per serverless
+// instance, so it's a basic abuse deterrent, not a hard guarantee.
+const hits = new Map<string, number[]>();
+
+function isRateLimited(userId: string) {
+  const now = Date.now();
+  const recent = (hits.get(userId) || []).filter((t) => now - t < RATE_WINDOW_MS);
+  recent.push(now);
+  hits.set(userId, recent);
+  return recent.length > RATE_LIMIT;
+}
 
 type ExistingProject = { id: string; name: string; tasks: string[] };
 
@@ -29,10 +45,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  if (isRateLimited(user.id)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const body = (await req.json()) as { text?: string; existing?: ExistingProject[] };
   const text = (body.text || "").trim();
   if (!text) {
     return NextResponse.json({ error: "empty" }, { status: 400 });
+  }
+  if (text.length > MAX_CHARS) {
+    return NextResponse.json({ error: "too_long" }, { status: 400 });
   }
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {

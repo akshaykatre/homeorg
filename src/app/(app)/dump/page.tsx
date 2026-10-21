@@ -17,6 +17,8 @@ type ReviewState = {
   routines: ReviewRoutine[];
 };
 
+const MAX_CHARS = 4000;
+
 function splitLines(text: string) {
   return text
     .split(/\n+|(?<=[.!?])\s+/)
@@ -129,9 +131,11 @@ export default function DumpPage() {
         const msg =
           code === "rate_limited"
             ? "Too many requests right now. Try again in a minute."
-            : code === "invalid_json"
-              ? "The sorting came back garbled. Try again."
-              : "Sorting did not work this time.";
+            : code === "too_long"
+              ? `That's too long to sort in one go (max ${MAX_CHARS} characters). Try splitting it up.`
+              : code === "invalid_json"
+                ? "The sorting came back garbled. Try again."
+                : "Sorting did not work this time.";
         setStatus(`${msg} You can also add each line as a task.`, true);
         setShowFallback(true);
         return;
@@ -354,8 +358,14 @@ export default function DumpPage() {
         placeholder="Chase the installer about the heat pump, plan the birthday party, bins on Thursday, we're low on diapers..."
         aria-label="Everything on your mind"
         value={dumpText}
+        maxLength={MAX_CHARS}
         onChange={(e) => setDumpText(e.target.value)}
       />
+      {dumpText.length > MAX_CHARS * 0.8 && (
+        <p className="hint">
+          {dumpText.length}/{MAX_CHARS} characters
+        </p>
+      )}
       <div className="row">
         <button className="btn primary" type="button" disabled={sorting} onClick={startSort}>
           Sort it
