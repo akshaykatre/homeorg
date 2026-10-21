@@ -101,6 +101,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </svg>
             {unread > 0 && <span className="bellbadge">{unread}</span>}
           </button>
+          <Link className="linkbtn" href="/settings">
+            Settings
+          </Link>
           <button className="linkbtn" type="button" onClick={signOut}>
             Sign out
           </button>
